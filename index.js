@@ -5,6 +5,9 @@ const WebSocket = require('ws');
 const server = https.createServer({
     key: fs.readFileSync('key.pem'),
     cert: fs.readFileSync('cert.pem')
+}, (req, res) => {
+    res.writeHead(200);
+    res.end('Hello there! This is a temporary page to let you download the tls certificate and add it to the trusted root CAs');
 });
 const wss = new WebSocket.Server({server});
 
