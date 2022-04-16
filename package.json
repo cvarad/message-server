@@ -1,0 +1,14 @@
+{
+  "name": "message-server",
+  "version": "0.0.1",
+  "description": "The message server that hosts websocket connections with the clients, pushes messages to db and reads from it.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "varad.raut@colorado.edu",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.5.0"
+  }
+}
