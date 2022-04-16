@@ -1,7 +1,11 @@
-const http = require('http');
+const https = require('https');
+const fs = require('fs');
 const WebSocket = require('ws');
 
-const server = http.createServer();
+const server = https.createServer({
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem')
+});
 const wss = new WebSocket.Server({server});
 
 let convUserMap = new Map();
@@ -35,4 +39,4 @@ wss.on('connection', (ws) => {
     });
 });
 
-server.listen(80);
+server.listen(443);
