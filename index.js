@@ -1,9 +1,8 @@
+const http = require('http');
 const WebSocket = require('ws');
 
-const WSS_OPTIONS = {
-    port: 7071
-};
-const wss = new WebSocket.Server(WSS_OPTIONS);
+const server = http.createServer();
+const wss = new WebSocket.Server({server});
 
 let convUserMap = new Map();
 function addConversation(conversationId, sender, receiver) {
@@ -24,8 +23,16 @@ function addUser(userId, ws) {
 wss.on('connection', (ws) => {
     console.log('New Connection!');
     ws.on('message', (msg) => {
-        msgData = JSON.parse(msg.toString('utf-8'));
-        addUser(msgData.sender, ws)
-        addConversation(msgData.conversation_id, msgData.sender, msgData.receiver);
+        msg = msg.toString('utf-8')
+        try {
+            msgData = JSON.parse(msg);
+            console.log('Received JSON: ' + msgData)
+            addUser(msgData.sender, ws)
+            addConversation(msgData.conversation_id, msgData.sender, msgData.receiver);
+        } catch (e) {
+            console.log('Received non-JSON: ' + msg);
+        }
     });
 });
+
+server.listen(80);
