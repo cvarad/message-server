@@ -3,6 +3,7 @@ const fs = require('fs');
 const WebSocket = require('ws');
 
 const parser = require('./parser');
+const ddb = require('./ddb-client');
 const logger = require('./logger').getConsoleLogger(' MAIN ');
 
 
@@ -85,7 +86,8 @@ function handleMessage(msg, ws) {
 
 // TODO: user authentication; dynamodb
 function authenticate(data) {
-    return true;
+    if (!data.userId || !data.token) return false;
+    return ddb.authenticate(data.userId, data.token);
 }
 
 function registerCallbacks(ws) {
@@ -98,9 +100,9 @@ function registerCallbacks(ws) {
                 addUser(data.userId, ws);
                 ws.userId = data.userId; // TODO: set user id from received data
             } else {
+                logger.info(`User ${data.userId} authentication failed!`);
                 ws.close();
             }
-
             return;
         }
 
