@@ -85,24 +85,29 @@ function handleMessage(msg, ws) {
 }
 
 // TODO: user authentication; dynamodb
-function authenticate(data) {
-    if (!data.userId || !data.token) return false;
-    return ddb.authenticate(data.userId, data.token);
+function authenticate(data, callback) {
+    if (!data.userId || !data.token) {
+        callback(false);
+        return;
+    }
+    ddb.authenticate(data.userId, data.token, callback);
 }
 
 function registerCallbacks(ws) {
     ws.on('message', (msg) => {
         if (!ws.authenticated) {
-            ws.authenticated = true;
             data = JSON.parse(msg);
-            if (authenticate(data)) {
-                logger.info(`User ${data.userId} authenticated!`);
-                addUser(data.userId, ws);
-                ws.userId = data.userId; // TODO: set user id from received data
-            } else {
-                logger.info(`User ${data.userId} authentication failed!`);
-                ws.close();
-            }
+            ws.userId = data.userId; // TODO: set user id from received data
+            ws.authenticated = true;
+            authenticate(data, (authenticated) => {
+                if (authenticated) {
+                    logger.info(`User ${data.userId} authenticated!`);
+                    addUser(data.userId, ws);
+                } else {
+                    logger.info(`User ${data.userId} authentication failed!`);
+                    ws.close();
+                }
+            });
             return;
         }
 
