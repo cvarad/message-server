@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 
 const parser = require('./parser');
 const ddb = require('./ddb-client');
+const sqs = require('./sqs-client');
 const logger = require('./logger').getConsoleLogger(' MAIN ');
 
 
@@ -56,7 +57,7 @@ function routeMessage(msgData, sender) {
         logger.error(`No participants found for conv id: ${msgData.conversationId}`);
         return;
     }
-    
+
     delete msgData.to;
     msgData.from = sender;
 
@@ -75,16 +76,16 @@ function routeMessage(msgData, sender) {
 
 function handleMessage(msg, ws) {
     try {
-        data = parser.parse(msg);        
+        data = parser.parse(msg);
     } catch (e) {
         logger.warn(`Received non-JSON: ${msg.toString()}`);
     }
 
     addConversation(data.conversationId, ws.userId, data.to);
     routeMessage(data, ws.userId);
+    // sqs.sendMessage(JSON.stringify(data));
 }
 
-// TODO: user authentication; dynamodb
 function authenticate(data, callback) {
     if (!data.userId || !data.token) {
         callback(false);
@@ -93,16 +94,21 @@ function authenticate(data, callback) {
     ddb.authenticate(data.userId, data.token, callback);
 }
 
+function notifyAuth(ws) {
+    ws.send(JSON.stringify({ 'authenticated': true }));
+}
+
 function registerCallbacks(ws) {
     ws.on('message', (msg) => {
         if (!ws.authenticated) {
             data = JSON.parse(msg);
-            ws.userId = data.userId; // TODO: set user id from received data
-            ws.authenticated = true;
+            ws.userId = data.userId;
             authenticate(data, (authenticated) => {
                 if (authenticated) {
                     logger.info(`User ${data.userId} authenticated!`);
+                    ws.authenticated = true;
                     addUser(data.userId, ws);
+                    notifyAuth(ws);
                 } else {
                     logger.info(`User ${data.userId} authentication failed!`);
                     ws.close();
