@@ -1,8 +1,17 @@
 const winston = require('winston');
 const {combine, timestamp, printf} = winston.format;
 
+function toLocalISO8601(timestamp, offset) {
+    let offsetMillis = offset*60*1000;
+    let str = new Date(new Date(timestamp) - offsetMillis).toISOString();
+    return str.slice(0, -1);
+}
+// Mountain Time Offset for logging in local time
+const mtOffset = 360;
+
 const logFormat =  printf(({level, message, label, timestamp}) => {
     level = level.toLocaleUpperCase();
+    timestamp = toLocalISO8601(timestamp, mtOffset);
     return `${timestamp} [${label}] ${level}: ${message}`
 });
 
