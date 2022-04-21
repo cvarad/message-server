@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 
+# logs
+logs/
+
 # https
 cert.pem
 key.pem
