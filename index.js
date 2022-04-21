@@ -22,7 +22,7 @@ function addConversation(conversationId, from, to) {
     if (convUserMap.has(conversationId)) {
         return;
     }
-    convUserMap.set(conversationId, [from, to]);
+    convUserMap.set(conversationId, new Set([from, to]));
 }
 function getConvParticipants(conversationId) {
     return convUserMap.get(conversationId);
@@ -60,6 +60,7 @@ function routeMessage(msgData, sender) {
 
     delete msgData.to;
     msgData.from = sender;
+    msgData.timeStamp = new Date().toISOString();
 
     for (let user of participants) {
         if (user === sender) continue;

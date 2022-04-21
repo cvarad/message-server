@@ -7,7 +7,7 @@ function toLocalISO8601(timestamp, offset) {
     return str.slice(0, -1);
 }
 // Mountain Time Offset for logging in local time
-const mtOffset = 360;
+const mtOffset = 360; // minutes
 
 const logFormat =  printf(({level, message, label, timestamp}) => {
     level = level.toLocaleUpperCase();
