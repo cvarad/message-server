@@ -20,9 +20,10 @@ const wss = new WebSocket.Server({ server });
 let convUserMap = new Map();
 function addConversation(conversationId, from, to) {
     if (convUserMap.has(conversationId)) {
-        return;
+        return false;
     }
     convUserMap.set(conversationId, new Set([from, to]));
+    return true;
 }
 function getConvParticipants(conversationId) {
     return convUserMap.get(conversationId);
@@ -51,19 +52,15 @@ wss.on('connection', (ws, req) => {
     registerCallbacks(ws);
 });
 
-function routeMessage(msgData, sender) {
+function routeMessage(msgData) {
     const participants = getConvParticipants(msgData.conversationId);
     if (!participants) {
         logger.error(`No participants found for conv id: ${msgData.conversationId}`);
         return;
     }
 
-    delete msgData.to;
-    msgData.from = sender;
-    msgData.timestamp = new Date().toISOString();
-
     for (let user of participants) {
-        if (user === sender) continue;
+        if (user === msgData.from) continue;
 
         let ws = getUserSocket(user);
         if (!ws) {
@@ -82,9 +79,16 @@ function handleMessage(msg, ws) {
         logger.warn(`Received non-JSON: ${msg.toString()}`);
     }
 
-    addConversation(data.conversationId, ws.userId, data.to);
-    routeMessage(data, ws.userId);
-    // sqs.sendMessage(JSON.stringify(data));
+    let newConv = addConversation(data.conversationId, ws.userId, data.to);
+    delete data.to;
+    data.from = ws.userId;
+    data.timestamp = new Date().toISOString();
+    let sqsData = Object.assign({}, data);
+    if (newConv) 
+        sqsData.participants = Array.from(getConvParticipants(data.conversationId));
+
+    sqs.sendMessage(JSON.stringify(sqsData));
+    routeMessage(data);
 }
 
 function authenticate(data, callback) {
