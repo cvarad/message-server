@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk'); // TODO: Use v3
-const logger = require('./logger').getConsoleLogger('DDBCLI');
+const logger = require('./logger').getLogger('DDBCLI');
 
 // constants
 const USER_TABLE = 'userDetailsTable';

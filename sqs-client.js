@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const logger = require('./logger').getConsoleLogger('SQSCLI');
+const logger = require('./logger').getLogger('SQSCLI');
 
 // constants
 const ENDPOINT = 'https://sqs.us-east-1.amazonaws.com/';

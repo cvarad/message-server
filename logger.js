@@ -17,7 +17,7 @@ const logFormat = printf(({ level, message, label, timestamp }) => {
 
 let fileTransport;
 
-exports.getConsoleLogger = (label) => {
+exports.getLogger = (label) => {
     if (!fileTransport)
         fileTransport = new winston.transports.File({filename: `logs/${Date.now()}`});
     if (!winston.loggers.has(label)) {
@@ -29,7 +29,7 @@ exports.getConsoleLogger = (label) => {
                 logFormat
             ),
             transports: [
-                new winston.transports.Console(),
+                // new winston.transports.Console(),
                 fileTransport
             ]
         });

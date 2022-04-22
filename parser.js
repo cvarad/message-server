@@ -1,4 +1,4 @@
-const logger = require('./logger').getConsoleLogger('PARSER');
+const logger = require('./logger').getLogger('PARSER');
 
 /**
  * Parses the incoming message.

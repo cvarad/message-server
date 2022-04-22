@@ -5,7 +5,7 @@ const WebSocket = require('ws');
 const parser = require('./parser');
 const ddb = require('./ddb-client');
 const sqs = require('./sqs-client');
-const logger = require('./logger').getConsoleLogger(' MAIN ');
+const logger = require('./logger').getLogger(' MAIN ');
 
 
 const server = https.createServer({
@@ -60,7 +60,7 @@ function routeMessage(msgData, sender) {
 
     delete msgData.to;
     msgData.from = sender;
-    msgData.timeStamp = new Date().toISOString();
+    msgData.timestamp = new Date().toISOString();
 
     for (let user of participants) {
         if (user === sender) continue;
