@@ -18,8 +18,13 @@ const logFormat = printf(({ level, message, label, timestamp }) => {
 let fileTransport;
 
 exports.getLogger = (label) => {
-    if (!fileTransport)
-        fileTransport = new winston.transports.File({filename: `logs/${Date.now()}`});
+    if (!fileTransport) {
+        let offsetMillis = mtOffset * 60 * 1000;
+        fileTransport = new winston.transports.File({
+            filename: `logs/${new Date(new Date()-offsetMillis).toISOString().slice(0, -1)}`
+        });
+
+    }
     if (!winston.loggers.has(label)) {
         winston.loggers.add(label, {
             level: 'debug',
