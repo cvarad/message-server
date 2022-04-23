@@ -5,10 +5,14 @@ const logger = require('./logger').getLogger('PARSER');
  * @param {any} msg 
  */
 function parse(msg) {
-    const rawData = msg.toString('utf-8');
-    data = JSON.parse(rawData);
-    logger.debug(`Received JSON: ${rawData}`);
-    return data;
+    const data = msg.toString('utf-8');
+    try {
+        let parsed =  JSON.parse(data);
+        logger.debug(`Received data: ${data}`);
+        return parsed;
+    } catch (e) {
+        logger.warn(`Received non-JSON: ${msg.toString()}`);
+    }
 }
 exports.parse = parse;
 
