@@ -5,13 +5,9 @@ const WebSocket = require('ws');
 
 const parser = require('./parser');
 const ddb = require('./ddb-client');
-<<<<<<< Updated upstream
 const sqs = require('./sqs-client');
-const logger = require('./logger').getLogger(' MAIN ');
-=======
 const presence = require('./presence-server');
-const logger = require('./logger').getConsoleLogger(' MAIN ');
->>>>>>> Stashed changes
+const logger = require('./logger').getLogger(' MAIN ');
 
 
 const server = https.createServer({
@@ -21,8 +17,8 @@ const server = https.createServer({
     res.writeHead(200);
     res.end('Hello! Download the TLS certificate and add it to the trusted root CAs (If not done already)!');
 });
-const wss = new WebSocket.Server({ server });
-const wssPresence = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ noServer: true });
+const wssPresence = new WebSocket.Server({ noServer: true });
 
 let convUserMap = new Map();
 function addConversation(conversationId, from, to) {
@@ -51,9 +47,8 @@ function removeUser(userId) {
 }
 
 server.on('upgrade', (request, socket, head) => {
-    // TODO: message-server & presence-server seperation
     const { pathname } = parse(request.url);
-
+    logger.info(`Received upgrade request for: ${pathname}`);
     if (pathname === '/') {
         wss.handleUpgrade(request, socket, head, (ws) => {
             wss.emit('connection', ws, request);
@@ -63,6 +58,7 @@ server.on('upgrade', (request, socket, head) => {
             wssPresence.emit('connection', ws, request);
         });
     } else {
+        logger.error(`Unknown pathname: ${pathname}`);
         socket.destroy();
     }
 });

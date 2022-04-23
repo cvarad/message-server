@@ -1,4 +1,4 @@
-const logger = require('./logger');
+const logger = require('./logger').getLogger('PRESNC');
 
 let pubsubMap = new Map();
 
@@ -10,26 +10,36 @@ function addSubscriber(subscriptionId, ws) {
     pubsubMap.get(subscriptionId).add(ws);
 }
 
-function removeSubscriber(subscriptionId, ws) {
-    pubsubMap.get(subscriptionId).delete(ws);
+// Implement efficient solution for removing subscriber
+// by keeping a user-subscription map
+function removeSubscriber(ws) {
+    for (let subscriberSet of pubsubMap.values())
+        subscriberSet.delete(ws);
 }
 
 function getSubscribers(subscriptionId) {
-    return Array.from(pubsubMap.get(subscriptionId));
+    if (pubsubMap.has(subscriptionId))
+        return Array.from(pubsubMap.get(subscriptionId));
+    return [];
 }
 
-function notifyAll(data, ws) {
+function notifyAll(data) {
     let subscribers = getSubscribers(data.userId);
     for (let subscriber of subscribers) {
-        subscriber.send({ type: 'notify', status: data.status });
+        subscriber.send(JSON.stringify({ 
+            type: 'notify',
+            subscriptionId: data.userId,
+            status: data.status 
+        }));
     }
 }
 
 function registerCallbacks(ws) {
     ws.on('message', (msg) => {
         let data = JSON.parse(msg);
+        logger.info(`Received presence data: ${msg}`);
         if (data.type === 'publish') { // {type: 'publish', status: 'online/offline/busy'}
-            notifyAll(data, ws); 
+            notifyAll(data); 
         } else if (data.type === 'subscribe') { // {type: 'subscribe, subscriptionId: 'chaunsa@university.com'}
             addSubscriber(data.subscriptionId, ws);
         } else {
@@ -39,6 +49,7 @@ function registerCallbacks(ws) {
 
     ws.on('close', () => {
         logger.info(`Connection closed for: ${ws.userId}`);
+        removeSubscriber(ws);
     });
 }
 exports.registerCallbacks = registerCallbacks;
