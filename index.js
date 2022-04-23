@@ -1,11 +1,17 @@
 const https = require('https');
 const fs = require('fs');
+const { parse } = require('url');
 const WebSocket = require('ws');
 
 const parser = require('./parser');
 const ddb = require('./ddb-client');
+<<<<<<< Updated upstream
 const sqs = require('./sqs-client');
 const logger = require('./logger').getLogger(' MAIN ');
+=======
+const presence = require('./presence-server');
+const logger = require('./logger').getConsoleLogger(' MAIN ');
+>>>>>>> Stashed changes
 
 
 const server = https.createServer({
@@ -16,6 +22,7 @@ const server = https.createServer({
     res.end('Hello! Download the TLS certificate and add it to the trusted root CAs (If not done already)!');
 });
 const wss = new WebSocket.Server({ server });
+const wssPresence = new WebSocket.Server({ server });
 
 let convUserMap = new Map();
 function addConversation(conversationId, from, to) {
@@ -45,6 +52,24 @@ function removeUser(userId) {
 
 server.on('upgrade', (request, socket, head) => {
     // TODO: message-server & presence-server seperation
+    const { pathname } = parse(request.url);
+
+    if (pathname === '/') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
+        });
+    } else if (pathname === '/presence') {
+        wssPresence.handleUpgrade(request, socket, head, (ws) => {
+            wssPresence.emit('connection', ws, request);
+        });
+    } else {
+        socket.destroy();
+    }
+});
+
+wssPresence.on('connection', (ws, req) => {
+    logger.info('New presence connection received!');
+    presence.registerCallbacks(ws);
 });
 
 wss.on('connection', (ws, req) => {
