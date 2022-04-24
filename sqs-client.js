@@ -3,10 +3,12 @@ const logger = require('./logger').getLogger('SQSCLI');
 
 // constants
 const ENDPOINT = 'https://sqs.us-east-1.amazonaws.com/';
-const QUEUE_ENDPOINT = '434135409552/TestQueue';
+const QUEUE_ENDPOINT = '649413426770/BDA-Test-Queue';
+const TEST_QUEUE_ENDPOINT = '434135409552/TestQueue';
+
 
 // init
-let creds = new AWS.SharedIniFileCredentials({profile: 'default'});
+let creds = new AWS.SharedIniFileCredentials({profile: 'dynamodbacc'});
 const sqs = new AWS.SQS({
     endpoint: ENDPOINT,
     accessKeyId: creds.accessKeyId,
