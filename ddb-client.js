@@ -9,7 +9,16 @@ const EMAIL_FIELD = 'email';
 AWS.config.update({region: 'us-east-1'});
 const ddb = new AWS.DynamoDB();
 
-function authenticate(userId, token, callback) {
+function authenticate(data, callback) {
+    if (!data.userId || !data.token) {
+        callback(false);
+        return;
+    }
+    dbAuth(data.userId, data.token, callback);
+}
+exports.authenticate = authenticate;
+
+function dbAuth(userId, token, callback) {
     ddb.scan({
         FilterExpression: `${EMAIL_FIELD} = :e1`,
         ExpressionAttributeValues: {
@@ -29,4 +38,3 @@ function authenticate(userId, token, callback) {
         callback(authenticated);
     });
 }
-exports.authenticate = authenticate;
