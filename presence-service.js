@@ -69,10 +69,15 @@ async function notifyFromCache(data, ws) {
 function notifyAll(data, subscriptionId) {
     let subscribers = getSubscribers(subscriptionId);
     for (let subscriber of subscribers) {
-        subscriber.send(JSON.stringify({
+        const notification = {
             type: 'notify',
             subscriptionId: subscriptionId,
             status: data.status
-        }));
+        };
+
+        if (data.timestamp)
+            notification.timestamp = data.timestamp;
+
+        subscriber.send(JSON.stringify(notification));
     }
 }
