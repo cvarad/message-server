@@ -62,6 +62,7 @@ exports.addUser = addUser;
 function getUserSocket(userId) {
     return userSockMap.get(userId);
 }
+exports.getUserSocket = getUserSocket;
 
 function removeUser(userId) {
     userSockMap.delete(userId);

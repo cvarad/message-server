@@ -1,13 +1,25 @@
 const logger = require('./logger').getLogger('PRESNC');
 const redis = require('./redis-cli');
+const { getUserSocket } = require('./message-service');
 
 let pubsubMap = new Map();
 
 exports.handleMessage = (data, ws) => {
     if (data.type === 'publish') { // {type: 'publish', status: 'online/offline/busy'}
         logger.info(`Received PUBLISH from ${ws.userId}: ${data.status}`);
-        redis.updatePresence(ws.userId, data.status);
-        notifyAll(data, ws.userId);
+        if (data.status === 'typing') {
+            let ws = getUserSocket(data.to);
+            if (ws) {
+                ws.send(JSON.stringify({
+                    type: 'notify',
+                    subscriptionId: ws.userId,
+                    status: data.status
+                }));
+            }
+        } else {
+            redis.updatePresence(ws.userId, data.status);
+            notifyAll(data, ws.userId);
+        }
     } else if (data.type === 'subscribe') { // {type: 'subscribe, subscriptionId: 'chaunsa@university.com'}
         logger.info(`Received SUBSCRIBE from ${ws.userId} for ${data.subscriptionId}`);
         addSubscriber(data.subscriptionId, ws);
