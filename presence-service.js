@@ -1,21 +1,26 @@
 const logger = require('./logger').getLogger('PRESNC');
+const redis = require('./redis-cli');
 
 let pubsubMap = new Map();
 
 exports.handleMessage = (data, ws) => {
     if (data.type === 'publish') { // {type: 'publish', status: 'online/offline/busy'}
         logger.info(`Received PUBLISH from ${ws.userId}: ${data.status}`);
+        redis.updatePresence(ws.userId, data.status);
         notifyAll(data, ws.userId);
     } else if (data.type === 'subscribe') { // {type: 'subscribe, subscriptionId: 'chaunsa@university.com'}
         logger.info(`Received SUBSCRIBE from ${ws.userId} for ${data.subscriptionId}`);
         addSubscriber(data.subscriptionId, ws);
+        notifyFromCache(data, ws);
     } else {
         logger.error(`Unknown type received: ${data.type}`);
     }
 }
 
 exports.handleClose = (ws) => {
-    notifyAll({ status: 'offline' }, ws.userId);
+    const ts = new Date().toISOString();
+    redis.updatePresence(ws.userId, `offline#${ts}`);
+    notifyAll({ status: 'offline', timestamp: ts }, ws.userId);
     removeSubscriber(ws);
 }
 
@@ -38,6 +43,27 @@ function getSubscribers(subscriptionId) {
     if (pubsubMap.has(subscriptionId))
         return Array.from(pubsubMap.get(subscriptionId));
     return [];
+}
+
+async function notifyFromCache(data, ws) {
+    const notification = {
+        type: 'notify',
+        subscriptionId: data.subscriptionId,
+    };
+
+    const status = await redis.getPresence(data.subscriptionId);
+
+    if (!status) {
+        notification.status = 'offline';
+    } else if (status.startsWith('offline')) {
+        let [_, ts] = status.split('#');
+        notification.status = 'offline';
+        notification.timestamp = ts;
+    } else {
+        notification.status = status;
+    }
+
+    ws.send(JSON.stringify(notification));
 }
 
 function notifyAll(data, subscriptionId) {
