@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.1116.0",
+    "redis": "^4.0.6",
     "uuid": "^8.3.2",
     "winston": "^3.7.2",
     "ws": "^8.5.0"

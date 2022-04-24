@@ -1,8 +1,9 @@
 const AWS = require('aws-sdk'); // TODO: Use v3
-const logger = require('./logger').getConsoleLogger('DDBCLI');
+const logger = require('./logger').getLogger('DDBCLI');
 
 // constants
 const USER_TABLE = 'userDetailsTable';
+const EMAIL_FIELD = 'email';
 
 // init
 AWS.config.update({region: 'us-east-1'});
@@ -10,7 +11,7 @@ const ddb = new AWS.DynamoDB();
 
 function authenticate(userId, token, callback) {
     ddb.scan({
-        FilterExpression: 'email = :e1',
+        FilterExpression: `${EMAIL_FIELD} = :e1`,
         ExpressionAttributeValues: {
             ':e1': {'S': userId}
         },
@@ -24,14 +25,8 @@ function authenticate(userId, token, callback) {
         } else if (data.Items[0].jwtToken.S === token) {
             authenticated = true;
         }
-        console.log(JSON.stringify(data.Items[0]));
+        logger.info(JSON.stringify(data.Items[0]));
         callback(authenticated);
     });
 }
 exports.authenticate = authenticate;
-
-//  AWS.config.getCredentials((err) => {
-//      if (err) logger.error(err.stack);
-//      else console.log('Access Key:', AWS.config.credentials.accessKeyId);
-//      console.log(AWS.config.region)
-//  });

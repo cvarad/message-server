@@ -4,7 +4,9 @@ const WebSocket = require('ws');
 
 const parser = require('./parser');
 const ddb = require('./ddb-client');
-const logger = require('./logger').getConsoleLogger(' MAIN ');
+const presence = require('./presence-service');
+const msgService = require('./message-service');
+const logger = require('./logger').getLogger(' MAIN ');
 
 
 const server = https.createServer({
@@ -14,77 +16,14 @@ const server = https.createServer({
     res.writeHead(200);
     res.end('Hello! Download the TLS certificate and add it to the trusted root CAs (If not done already)!');
 });
+
 const wss = new WebSocket.Server({ server });
-
-let convUserMap = new Map();
-function addConversation(conversationId, from, to) {
-    if (convUserMap.has(conversationId)) {
-        return;
-    }
-    convUserMap.set(conversationId, [from, to]);
-}
-function getConvParticipants(conversationId) {
-    return convUserMap.get(conversationId);
-}
-
-let userSockMap = new Map();
-function addUser(userId, ws) {
-    if (userSockMap.has(userId)) {
-        return;
-    }
-    userSockMap.set(userId, ws);
-}
-function getUserSocket(userId) {
-    return userSockMap.get(userId);
-}
-function removeUser(userId) {
-    userSockMap.delete(userId);
-}
-
-server.on('upgrade', (request, socket, head) => {
-    // TODO: message-server & presence-server seperation
-});
 
 wss.on('connection', (ws, req) => {
     logger.info('New connection received!');
     registerCallbacks(ws);
 });
 
-function routeMessage(msgData, sender) {
-    const participants = getConvParticipants(msgData.conversationId);
-    if (!participants) {
-        logger.error(`No participants found for conv id: ${msgData.conversationId}`);
-        return;
-    }
-    
-    delete msgData.to;
-    msgData.from = sender;
-
-    for (let user of participants) {
-        if (user === sender) continue;
-
-        let ws = getUserSocket(user);
-        if (!ws) {
-            logger.debug(`Socket not found for user: ${user}`);
-            continue;
-        };
-        logger.info(`Routing message (${msgData.messageId}) to (${user})`);
-        ws.send(JSON.stringify(msgData));
-    }
-}
-
-function handleMessage(msg, ws) {
-    try {
-        data = parser.parse(msg);        
-    } catch (e) {
-        logger.warn(`Received non-JSON: ${msg.toString()}`);
-    }
-
-    addConversation(data.conversationId, ws.userId, data.to);
-    routeMessage(data, ws.userId);
-}
-
-// TODO: user authentication; dynamodb
 function authenticate(data, callback) {
     if (!data.userId || !data.token) {
         callback(false);
@@ -93,30 +32,40 @@ function authenticate(data, callback) {
     ddb.authenticate(data.userId, data.token, callback);
 }
 
+function notifyAuth(ws) {
+    ws.send(JSON.stringify({ 'authenticated': true }));
+}
+
+function onMessage(msg, ws) {
+    let data = parser.parse(msg);
+    if (!ws.authenticated) {
+        ws.userId = data.userId;
+        authenticate(data, (authenticated) => {
+            if (authenticated) {
+                logger.info(`User ${data.userId} authenticated!`);
+                ws.authenticated = true;
+                msgService.addUser(data.userId, ws);
+                notifyAuth(ws);
+            } else {
+                logger.info(`User ${data.userId} authentication failed!`);
+                ws.close();
+            }
+        });
+    } else if (data.type) {
+        presence.handleMessage(data, ws);
+    } else {
+        msgService.handleMessage(data, ws);
+    }
+}
+
 function registerCallbacks(ws) {
     ws.on('message', (msg) => {
-        if (!ws.authenticated) {
-            data = JSON.parse(msg);
-            ws.userId = data.userId; // TODO: set user id from received data
-            ws.authenticated = true;
-            authenticate(data, (authenticated) => {
-                if (authenticated) {
-                    logger.info(`User ${data.userId} authenticated!`);
-                    addUser(data.userId, ws);
-                } else {
-                    logger.info(`User ${data.userId} authentication failed!`);
-                    ws.close();
-                }
-            });
-            return;
-        }
-
-        handleMessage(msg, ws);
+        onMessage(msg, ws);
     });
-
     ws.on('close', () => {
         logger.info(`Connection closed for: ${ws.userId}`);
-        removeUser(ws.userId);
+        msgService.removeUser(ws.userId);
+        presence.handleClose(ws);
     });
 }
 
