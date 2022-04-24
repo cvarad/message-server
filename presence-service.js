@@ -8,9 +8,9 @@ exports.handleMessage = (data, ws) => {
     if (data.type === 'publish') { // {type: 'publish', status: 'online/offline/busy'}
         logger.info(`Received PUBLISH from ${ws.userId}: ${data.status}`);
         if (data.status === 'typing') {
-            let ws = getUserSocket(data.to);
-            if (ws) {
-                ws.send(JSON.stringify({
+            let subscriber = getUserSocket(data.to);
+            if (subscriber) {
+                subscriber.send(JSON.stringify({
                     type: 'notify',
                     subscriptionId: ws.userId,
                     status: data.status
