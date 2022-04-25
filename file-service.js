@@ -39,7 +39,14 @@ async function bodyHandler(req, res, next) {
     req.body = Buffer.concat(buffers);
     // Check for JSON body
     if (req.headers['content-type'] === 'application/json') {
-        req.body = JSON.parse(req.body.toString('utf-8'));
+        try {
+            req.body = JSON.parse(req.body.toString('utf-8'));
+            logger.debug(`Profile picture request for ${req.body.urls}`);
+        } catch (err) {
+            logger.error(`Error parsing JSON: ${req.body.toString('utf-8')}`);
+            res.writeHead(400).end();
+            return;
+        }
     }
 
     next();
