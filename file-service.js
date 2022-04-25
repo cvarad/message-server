@@ -30,11 +30,11 @@ function setup(app) {
 
     app.post('/profile', handleProfileDownload);
     app.put('/profile', (req, res) => {
-        const uploadUrl = constructUrl(PROFILES_ENDPOINT, md5(req.headers['user-id']));
+        const uploadUrl = constructKey(PROFILES_ENDPOINT, md5(req.headers['user-id']));
         upload(req, res, uploadUrl);
     });
     app.put('/file', (req, res) => {
-        const uploadUrl = constructUrl(FILES_ENDPOINT, crypto.randomUUID());
+        const uploadUrl = constructKey(FILES_ENDPOINT, crypto.randomUUID());
         upload(req, res, uploadUrl);
     });
 }
@@ -106,7 +106,7 @@ function upload(req, res, key) {
     });
 }
 
-function constructUrl(endpoint, id) {
+function constructKey(endpoint, id) {
     return endpoint + `/${id}`;
 }
 
