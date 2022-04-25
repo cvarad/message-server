@@ -18,9 +18,15 @@ function setup(app) {
         res.end('Add TLS certificate to trusted root CAs');
     });
 
-    app.put('/profile', handleProfileUpload);
-    app.get('/profile', handleProfileDownload);
-    app.put('/file', handleFileUpload);
+    app.post('/profile', handleProfileDownload);
+    app.put('/profile', (req, res) => {
+        const uploadUrl = constructUrl(PROFILES_ENDPOINT, md5(req.headers['user-id']));
+        upload(req, res, uploadUrl);
+    });
+    app.put('/file', (req, res) => {
+        const uploadUrl = constructUrl(FILES_ENDPOINT, crypto.randomUUID());
+        upload(req, res, uploadUrl);
+    });
 }
 exports.setup = setup;
 
@@ -39,7 +45,20 @@ async function bodyHandler(req, res, next) {
     next();
 }
 
-function handleProfileUpload(req, res) {
+function handleProfileDownload(req, res) {
+    let urls = [];
+    if (!req.body.ids || !(req.body.ids instanceof Array)){
+        res.writeHead(400).end();
+        return;
+    }
+    for (const id of req.body.ids) {
+        urls.push(constructUrl(PROFILES_ENDPOINT, md5(id)));
+    }
+    res.setHeader('content-type', 'application/json');
+    res.end(JSON.stringify({ 'urls': urls }));
+}
+
+function upload(req, res, uploadUrl) {
     const userId = req.headers['user-id'];
     let token = req.headers['authorization'];
     if (token)
@@ -52,8 +71,6 @@ function handleProfileUpload(req, res) {
             return;
         }
 
-        // const uploadUrl = S3_URL + PROFILES_ENDPOINT + `/${md5(userId)}`;
-        const uploadUrl = constructUrl(PROFILES_ENDPOINT, md5(userId));
         request.put({
             url: uploadUrl,
             headers: {
@@ -72,23 +89,6 @@ function handleProfileUpload(req, res) {
             }
         });
     });
-}
-
-function handleProfileDownload(req, res) {
-    let urls = [];
-    if (!req.body.ids || !(req.body.ids instanceof Array)){
-        res.writeHead(400).end();
-        return;
-    }
-    for (const id of req.body.ids) {
-        urls.push(constructUrl(PROFILES_ENDPOINT, md5(id)));
-    }
-    res.setHeader('content-type', 'application/json');
-    res.end(JSON.stringify({ 'urls': urls }));
-}
-
-function handleFileUpload(req, res) {
-    res.writeHead(200).end();
 }
 
 function constructUrl(endpoint, id) {
