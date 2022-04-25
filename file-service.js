@@ -1,13 +1,23 @@
 const crypto = require('crypto');
-const request = require('request');
 const cors = require('cors');
+const AWS = require('aws-sdk');
 
 const ddb = require('./ddb-client');
 const logger = require('./logger').getLogger('FILESV');
 
-const S3_URL = 'https://bda-project.s3.amazonaws.com';
-const PROFILES_ENDPOINT = '/profiles';
-const FILES_ENDPOINT = '/files';
+const S3_URL = 'https://bda-project.s3.amazonaws.com/';
+const S3_ENDPOINT = 'https://s3.amazonaws.com/';
+const S3_BUCKET = 'bda-project';
+const PROFILES_ENDPOINT = 'profiles';
+const FILES_ENDPOINT = 'files';
+
+const creds = new AWS.SharedIniFileCredentials({profile: 'default'});
+const s3 = new AWS.S3({
+    endpoint: S3_ENDPOINT,
+    accessKeyId: creds.accessKeyId,
+    secretAccessKey: creds.secretAccessKey,
+    region: 'us-east-1'
+});
 
 function setup(app) {
     app.use(bodyHandler);
@@ -59,13 +69,13 @@ function handleProfileDownload(req, res) {
         return;
     }
     for (const id of req.body.ids) {
-        urls.push(constructUrl(PROFILES_ENDPOINT, md5(id)));
+        urls.push(S3_URL + PROFILES_ENDPOINT + `/${md5(id)}`);
     }
     res.setHeader('content-type', 'application/json');
     res.end(JSON.stringify({ 'urls': urls }));
 }
 
-function upload(req, res, uploadUrl) {
+function upload(req, res, key) {
     const userId = req.headers['user-id'];
     let token = req.headers['authorization'];
     if (token)
@@ -78,28 +88,26 @@ function upload(req, res, uploadUrl) {
             return;
         }
 
-        request.put({
-            url: uploadUrl,
-            headers: {
-                'content-type': req.headers['content-type']
-            },
-            body: req.body
-        }, (err, response) => {
+        s3.upload({
+            Bucket: S3_BUCKET,
+            Key: key,
+            Body: req.body,
+            ContentType: req.headers['content-type']
+        }, (err, data) => {
             if (err) {
                 logger.error(err);
-            } else if (response.statusCode === 200) {
+                res.setHeader(403).end();
+            } else  {
                 logger.info('File upload successful!');
                 res.setHeader('content-type', 'application/json');
-                res.end(JSON.stringify({ url: uploadUrl }));
-            } else {
-                res.writeHead(response.statusCode).end();
+                res.end(JSON.stringify({ url: data.Location }));
             }
         });
     });
 }
 
 function constructUrl(endpoint, id) {
-    return S3_URL + endpoint + `/${id}`;
+    return endpoint + `/${id}`;
 }
 
 function md5(str) {
