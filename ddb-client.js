@@ -53,3 +53,32 @@ function dbAuth(userId, token, callback) {
         callback(authenticated);
     });
 }
+
+exports.getUserDetails = (res, users) => {
+    let items = [];
+    for (const user of users)
+        items.push({email: {S: user}});
+
+    ddb.batchGetItem({
+        RequestItems: {
+            userDetailsTable: {
+                Keys: items,
+                ProjectionExpression: 'email, firstName, lastName'
+            }
+        }
+    }, (err, data) => {
+        if (err) {
+            logger.error(err);
+            res.writeHead(500).end();
+        } else {
+            const respItems = data.Responses.userDetailsTable.map((item) => {
+                return {
+                    username: item.email.S,
+                    fullName: `${item.firstName.S} ${item.lastName.S}`
+                };
+            });
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify({ 'userList': respItems }));
+        }
+    });
+}
