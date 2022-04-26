@@ -37,6 +37,11 @@ function setup(app) {
         const uploadUrl = constructKey(FILES_ENDPOINT, crypto.randomUUID());
         upload(req, res, uploadUrl);
     });
+
+    // This should be in a different location
+    app.post('/api/auth/getUserList', (req, res) => {
+        ddb.getUserDetails(res, req.body.userList);
+    });
 }
 exports.setup = setup;
 
