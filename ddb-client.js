@@ -55,6 +55,7 @@ function dbAuth(userId, token, callback) {
 }
 
 exports.getUserDetails = (res, users) => {
+	users = Array.from(new Set(users));
     let items = [];
     for (const user of users)
         items.push({email: {S: user}});
