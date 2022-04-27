@@ -4,16 +4,40 @@ const logger = require('./logger').getLogger('DDBCLI');
 // constants
 const USER_TABLE = 'userDetailsTable';
 const EMAIL_FIELD = 'email';
+const PICTURE_URL_FIELD = 'pictureUrl';
+exports.PICTURE_URL_FIELD = PICTURE_URL_FIELD;
 
 // init
 AWS.config.update({region: 'us-east-1'});
 const ddb = new AWS.DynamoDB();
 
-function authenticate(userId, token, callback) {
-    ddb.scan({
-        FilterExpression: `${EMAIL_FIELD} = :e1`,
+exports.authenticate = (data, callback) => {
+    if (!data.userId || !data.token) {
+        callback(false);
+        return;
+    }
+    dbAuth(data.userId, data.token, callback);
+}
+
+exports.updateField = (key, name, value) => {
+    logger.info(`Updating userDetailsTable: key=${key}, field=${name}, value=${value}`)
+    ddb.updateItem({
+        TableName: USER_TABLE,
+        Key: {'email': {'S': key}},
+        UpdateExpression: `SET ${name} = :url`,
+        ExpressionAttributeValues: {':url': {'S': value}}
+    }, (err, data) => {
+        if (err) {
+            logger.error(`Field update failed for ${key}` + err);
+        }
+    });
+}
+
+function dbAuth(userId, token, callback) {
+    ddb.query({
+        KeyConditionExpression:  `${EMAIL_FIELD} = :email`,
         ExpressionAttributeValues: {
-            ':e1': {'S': userId}
+            ':email': {'S': userId}
         },
         TableName: USER_TABLE
     }, (err, data) => {
@@ -29,4 +53,32 @@ function authenticate(userId, token, callback) {
         callback(authenticated);
     });
 }
-exports.authenticate = authenticate;
+
+exports.getUserDetails = (res, users) => {
+    let items = [];
+    for (const user of users)
+        items.push({email: {S: user}});
+
+    ddb.batchGetItem({
+        RequestItems: {
+            userDetailsTable: {
+                Keys: items,
+                ProjectionExpression: 'email, firstName, lastName'
+            }
+        }
+    }, (err, data) => {
+        if (err) {
+            logger.error(err);
+            res.writeHead(500).end();
+        } else {
+            const respItems = data.Responses.userDetailsTable.map((item) => {
+                return {
+                    username: item.email.S,
+                    fullName: `${item.firstName.S} ${item.lastName.S}`
+                };
+            });
+            res.setHeader('content-type', 'application/json');
+            res.end(JSON.stringify({ 'userList': respItems }));
+        }
+    });
+}
